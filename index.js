@@ -1,58 +1,69 @@
-const express = require('express');
-const bodyParser = require('body-parser');
-const axios = require('axios');
-require('dotenv').config();
-
+const express = require("express");
+const bodyParser = require("body-parser");
+const axios = require("axios");
 const app = express();
+
 app.use(bodyParser.json());
 
-// ✅ Webhook verification endpoint for Meta
-app.get('/webhook', (req, res) => {
-  const VERIFY_TOKEN = 'ezzibot123';
+const VERIFY_TOKEN = "your_verify_token"; // Set this to match your webhook verify token
+const DIALOGFLOW_WEBHOOK = "https://dialogflow.cloud.google.com/v1/integrations/messenger/webhook/your-dialogflow-endpoint"; // Replace with your Dialogflow webhook
 
-  const mode = req.query['hub.mode'];
-  const token = req.query['hub.verify_token'];
-  const challenge = req.query['hub.challenge'];
+// Webhook verification (GET)
+app.get("/", (req, res) => {
+  const mode = req.query["hub.mode"];
+  const token = req.query["hub.verify_token"];
+  const challenge = req.query["hub.challenge"];
 
-  if (mode && token) {
-    if (mode === 'subscribe' && token === VERIFY_TOKEN) {
-      console.log('✅ Webhook verified');
-      res.status(200).send(challenge);
-    } else {
-      res.sendStatus(403);
-    }
+  if (mode === "subscribe" && token === VERIFY_TOKEN) {
+    console.log("WEBHOOK_VERIFIED");
+    res.status(200).send(challenge);
   } else {
-    res.sendStatus(400);
+    res.sendStatus(403);
   }
 });
 
-// ✅ WhatsApp POST message handler
-app.post('/webhook', async (req, res) => {
+// Webhook message handler (POST)
+app.post("/", async (req, res) => {
   const body = req.body;
 
-  if (body.object) {
-  const entry = body.entry?.[0];
-    const change = entry?.changes?.[0];
-    const message = change?.value?.messages?.[0];
+  if (body.object === "whatsapp_business_account") {
+    const messages = body.entry?.[0]?.changes?.[0]?.value?.messages;
 
-    if (message) {
-      const phone_number_id = change.value.metadata.phone_number_id;
-      const from = message.from;
-      const msg_body = message.text.body;
+    if (messages && messages.length > 0) {
+      const phone_number_id = body.entry[0].changes[0].value.metadata.phone_number_id;
+      const from = messages[0].from;
+      const msg_body = messages[0].text?.body;
 
-      console.log(📩 New message from ${from}: ${msg_body});
+      console.log(Message from ${from}: ${msg_body});
 
-      // TODO: add reply logic or Dialogflow here
+      // Forward message to Dialogflow
+      try {
+        await axios.post(DIALOGFLOW_WEBHOOK, {
+          queryInput: {
+            text: {
+              text: msg_body,
+              languageCode: "en",
+            },
+          },
+          originalDetectIntentRequest: {
+            payload: {
+              data: body,
+            },
+          },
+          session: projects/your-dialogflow-project-id/agent/sessions/${from},
+        });
+      } catch (err) {
+        console.error("Error forwarding to Dialogflow:", err.response?.data || err.message);
+      }
     }
-
-    res.sendStatus(200);
+ res.sendStatus(200);
   } else {
     res.sendStatus(404);
   }
 });
 
-// ✅ Start the server
+// Start the server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(✅ Server running on port ${PORT});
+  console.log(Server is running on port ${PORT});
 });
