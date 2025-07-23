@@ -6,9 +6,9 @@ require('dotenv').config();
 const app = express();
 app.use(bodyParser.json());
 
-// ✅ GET route to verify webhook with Meta (very important!)
+// ✅ Webhook verification endpoint for Meta
 app.get('/webhook', (req, res) => {
-  const VERIFY_TOKEN = 'ezzibot123'; // Must match Meta's verify token
+  const VERIFY_TOKEN = 'ezzibot123';
 
   const mode = req.query['hub.mode'];
   const token = req.query['hub.verify_token'];
@@ -19,20 +19,19 @@ app.get('/webhook', (req, res) => {
       console.log('✅ Webhook verified');
       res.status(200).send(challenge);
     } else {
-      console.log('❌ Webhook verification failed');
       res.sendStatus(403);
-  }
+    }
   } else {
     res.sendStatus(400);
   }
 });
 
-// ✅ POST route to handle incoming WhatsApp messages
+// ✅ WhatsApp POST message handler
 app.post('/webhook', async (req, res) => {
   const body = req.body;
 
   if (body.object) {
-    const entry = body.entry?.[0];
+  const entry = body.entry?.[0];
     const change = entry?.changes?.[0];
     const message = change?.value?.messages?.[0];
 
@@ -43,9 +42,8 @@ app.post('/webhook', async (req, res) => {
 
       console.log(📩 New message from ${from}: ${msg_body});
 
-      // Add your Dialogflow or reply logic here
-
-  }
+      // TODO: add reply logic or Dialogflow here
+    }
 
     res.sendStatus(200);
   } else {
@@ -58,4 +56,3 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(✅ Server running on port ${PORT});
 });
-
