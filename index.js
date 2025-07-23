@@ -1,3 +1,5 @@
+app.get('/webhook', (req, res) => {
+  const VERIFY_TOKEN = 'ezzibot123'; // 
 const express = require('express');
 const bodyParser = require('body-parser');
 const axios = require('axios');
